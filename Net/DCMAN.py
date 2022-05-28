@@ -4,9 +4,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(os.path.dirname(__file__))
 
-from DualDecoder.DecoderMultiLoss import Channel_Merge_Decoder_MultiLoss
-from DualDecoder.DecoderAdd import Channel_Merge_Decoder_Add
-from DualDecoder.DecoderConcat import Channel_Merge_Decoder_Concat
+from Net.DualDecoder.DecoderFusion import Channel_Merge_Decoder_Fusion
 from Net.Utils import *
 import numpy as np
 from LSTM.BiConvLSTM import BiConvLSTM
@@ -93,7 +91,7 @@ class Channel_Encoder(nn.Module):
 class Dual_Channel_Attention_Net(nn.Module):
 
     def __init__(self, batchNorm=False, input_size=[240, 416], mode="train",
-                 frame_num=7, lstm_layer=1):
+                 frame_num=7, lstm_layer=1, Channel_merge="weighted"):
         super(Dual_Channel_Attention_Net, self).__init__()
         self.batchNorm = batchNorm
         self.mode = mode
@@ -104,16 +102,16 @@ class Dual_Channel_Attention_Net(nn.Module):
                                                  frame_num=frame_num, lstm_layer=self.lstm_layer)
         self.channel_b_encoder = Channel_Encoder(batchNorm=batchNorm, input_size=input_size,
                                                  frame_num=frame_num, lstm_layer=self.lstm_layer)
+        
+        if Channel_merge == "fusion":
+            Dual_Decoder = Channel_Merge_Decoder_Fusion
+        else:
+            raise NotImplementedError
 
-        self.decoder_a = Channel_Merge_Decoder_Concat(batchNorm=batchNorm, input_size=input_size,
+        self.decoder_a = Dual_Decoder(batchNorm=batchNorm, input_size=input_size,
                                                       frame_num=frame_num, mode=mode)
-        self.decoder_b = Channel_Merge_Decoder_Concat(batchNorm=batchNorm, input_size=input_size,
+        self.decoder_b = Dual_Decoder(batchNorm=batchNorm, input_size=input_size,
                                                       frame_num=frame_num, mode=mode)
-
-        # self.decoder_a = Channel_Merge_Decoder_Add(batchNorm=batchNorm, input_size=input_size,
-        #                                        frame_num=frame_num, mode=mode)
-        # self.decoder_b = Channel_Merge_Decoder_Add(batchNorm=batchNorm, input_size=input_size,
-        #                                        frame_num=frame_num, mode=mode)
 
     def forward(self, channel_a, channel_b):
         codes_a = self.channel_a_encoder(channel_a)
